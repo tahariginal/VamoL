@@ -1,0 +1,1736 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vamo: your football, on the record</title>
+<meta name="description" content="Vamo builds every amateur player a football portfolio: matches played, teams, tournaments, and attendance proven by the server. Nothing self-declared.">
+<meta name="theme-color" content="#0a0c0b">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/lato-900.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/lato-400.woff2" as="font" type="font/woff2" crossorigin>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Vamo: your football, on the record">
+<meta property="og:description" content="A football portfolio built only from matches that actually happened. Attendance proven by the server, never self-declared.">
+<meta property="og:image" content="assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  @font-face {
+    font-family: "Lato";
+    src: url("fonts/lato-400.woff2") format("woff2");
+    font-weight: 400; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: "Lato";
+    src: url("fonts/lato-700.woff2") format("woff2");
+    font-weight: 700; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: "Lato";
+    src: url("fonts/lato-900.woff2") format("woff2");
+    font-weight: 900; font-style: normal; font-display: swap;
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  img, svg { max-width: 100%; }
+  figure, figcaption, dl, dd { margin: 0; }
+  ::selection { background: rgba(22,193,114,0.3); }
+</style>
+</head>
+<body>
+<style>
+  :root {
+    --ground: #0a0c0b;
+    --panel: #121614;
+    --panel-raised: #191f1b;
+    --brand: #16c172;
+    --brand-bright: #3ad98f;
+    --ink: #f2f4f2;
+    --ink-soft: #c3c7c9;
+    --ink-muted: #a2a8a4;
+    --ink-faint: #6b736e;
+    --line: rgba(255, 255, 255, 0.14);
+    --line-soft: rgba(255, 255, 255, 0.07);
+    --glass: rgba(255, 255, 255, 0.06);
+    --glass-raised: rgba(255, 255, 255, 0.10);
+
+    --sans: "Lato", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+      Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+      monospace;
+
+    --measure: 62ch;
+    --gutter: clamp(1.25rem, 5vw, 4.5rem);
+    --shell: 1200px;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    color-scheme: dark;
+  }
+
+  /* Single visual world on purpose: the near-black ground is half the brand,
+     so both theme hooks resolve to the same palette and a viewer toggle can
+     never half-invert it. */
+  :root[data-theme="light"],
+  :root[data-theme="dark"] { color-scheme: dark; }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: clamp(1rem, 0.96rem + 0.2vw, 1.0625rem);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3 {
+    text-wrap: balance;
+    margin: 0;
+    letter-spacing: -0.028em;
+    line-height: 1.0;
+    font-weight: 900;
+  }
+
+  body { font-feature-settings: "kern" 1, "liga" 1; }
+
+  p { margin: 0; }
+
+  a { color: var(--brand-bright); text-underline-offset: 0.22em; }
+
+  :focus-visible {
+    outline: 2px solid var(--brand-bright);
+    outline-offset: 4px;
+    border-radius: 6px;
+  }
+
+  .shell {
+    width: 100%;
+    max-width: var(--shell);
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+
+  .eyebrow::before {
+    content: "";
+    width: 22px;
+    height: 1px;
+    background: var(--brand);
+    flex: none;
+  }
+
+  /* ---------- fixed atmosphere ---------- */
+
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0.038;
+    background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .rail {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    z-index: 70;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .rail i {
+    display: block;
+    height: 100%;
+    width: 100%;
+    transform: scaleX(var(--p, 0));
+    transform-origin: 0 50%;
+    background: linear-gradient(90deg, var(--brand-bright), var(--brand));
+    box-shadow: 0 0 18px rgba(22, 193, 114, 0.8);
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    position: relative;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-block: 1.7rem;
+  }
+
+  .wordmark {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-weight: 900;
+    font-size: 1.2rem;
+    letter-spacing: -0.05em;
+  }
+
+  .pip {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--brand);
+    box-shadow: 0 0 0 4px rgba(22, 193, 114, 0.15),
+                0 0 22px rgba(22, 193, 114, 0.6);
+  }
+
+  .locale {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* ---------- hero stage ---------- */
+
+  .stage {
+    position: relative;
+    isolation: isolate;
+    padding-bottom: clamp(4rem, 11vw, 9rem);
+  }
+
+  .stage::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 52vh;
+    background: radial-gradient(
+      112% 72% at 50% 100%,
+      rgba(22, 193, 114, 0.17) 0%,
+      rgba(22, 193, 114, 0.04) 44%,
+      transparent 74%
+    );
+    pointer-events: none;
+    z-index: 0;
+    mask-image: linear-gradient(to bottom, #000 0%, #000 45%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 45%, transparent 100%);
+  }
+
+  .field {
+    position: absolute;
+    inset: -6% -28% 0 -28%;
+    z-index: 0;
+    perspective: 620px;
+    perspective-origin: 50% 0%;
+    pointer-events: none;
+    mask-image: linear-gradient(to bottom, transparent 0%, transparent 34%, rgba(0,0,0,0.5) 55%, #000 78%, #000 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 34%, rgba(0,0,0,0.5) 55%, #000 78%, #000 100%);
+  }
+
+  .field-plane {
+    position: absolute;
+    inset: 0;
+    transform: rotateX(calc(76deg + var(--tilt, 0deg))) translateZ(-40px) scale(1.55);
+    transform-origin: 50% 100%;
+  }
+
+  .field-plane svg { width: 100%; height: 100%; display: block; }
+
+  .turf {
+    fill: none;
+    stroke: rgba(22, 193, 114, 0.26);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .turf.faint { stroke: rgba(22, 193, 114, 0.13); }
+  .spot { fill: rgba(22, 193, 114, 0.4); }
+
+  .horizon {
+    position: absolute;
+    left: 50%;
+    top: 4%;
+    width: 120%;
+    height: 46vh;
+    transform: translateX(-50%);
+    background: radial-gradient(
+      58% 100% at 50% 100%,
+      rgba(22, 193, 114, 0.18),
+      rgba(22, 193, 114, 0.05) 44%,
+      transparent 72%
+    );
+    filter: blur(60px);
+    pointer-events: none;
+    animation: pulse-h 16s ease-in-out infinite alternate;
+  }
+
+  @keyframes pulse-h { from { opacity: 0.7; } to { opacity: 1; } }
+
+  /* ---------- hero ---------- */
+
+  .hero {
+    position: relative;
+    z-index: 3;
+    display: grid;
+    grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
+    gap: clamp(2.5rem, 6vw, 5.5rem);
+    align-items: center;
+    padding-top: clamp(2rem, 6vw, 4.5rem);
+  }
+
+  .hero-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 1.6rem;
+    max-width: 36ch;
+    transform: translateY(calc(var(--lift, 0) * -1px));
+    opacity: var(--fade, 1);
+  }
+
+  .hero h1 {
+    font-size: clamp(2.9rem, 1.5rem + 6vw, 5.6rem);
+  }
+
+  .hero h1 span {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(0.4em) rotateX(45deg);
+    animation: word 0.9s var(--ease) forwards;
+    transform-origin: 50% 100%;
+  }
+
+  .hero h1 .lit { color: var(--brand); }
+
+  @keyframes word {
+    to { opacity: 1; transform: none; }
+  }
+
+  .lede {
+    color: var(--ink-soft);
+    font-size: clamp(1.0625rem, 1rem + 0.4vw, 1.28rem);
+    max-width: 46ch;
+  }
+
+  .hero-note {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem 1.5rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint);
+  }
+
+  .hero-note span { display: inline-flex; align-items: center; gap: 0.5rem; }
+
+  .hero-note span::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--brand);
+    flex: none;
+  }
+
+  .scroll-cue {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    opacity: var(--cue, 1);
+  }
+
+  .scroll-cue i {
+    width: 1px;
+    height: 26px;
+    background: linear-gradient(to bottom, var(--brand), transparent);
+    animation: drop 2s var(--ease) infinite;
+  }
+
+  @keyframes drop {
+    0%   { transform: scaleY(0); transform-origin: 50% 0; opacity: 0; }
+    35%  { transform: scaleY(1); transform-origin: 50% 0; opacity: 1; }
+    70%  { transform: scaleY(1); transform-origin: 50% 100%; opacity: 1; }
+    100% { transform: scaleY(0); transform-origin: 50% 100%; opacity: 0; }
+  }
+
+  /* ---------- passport card ---------- */
+
+  .card-stage { perspective: 1150px; display: flex; justify-content: center; }
+
+  .card {
+    --rx: 0deg;
+    --ry: 0deg;
+    --ty: 0px;
+    --sc: 1;
+    position: relative;
+    width: min(378px, 100%);
+    transform-style: preserve-3d;
+    transform: translateY(var(--ty)) rotateX(var(--rx)) rotateY(var(--ry)) scale(var(--sc));
+    transition: transform 420ms var(--ease);
+    animation: hover 7s ease-in-out infinite;
+  }
+
+  @keyframes hover {
+    0%, 100% { translate: 0 -9px; }
+    50%      { translate: 0 9px; }
+  }
+
+  .card-face {
+    position: relative;
+    transform: translateZ(40px);
+    padding: 1.7rem 1.55rem 1.45rem;
+    border-radius: 28px;
+    border: 1px solid var(--line);
+    overflow: hidden;
+    background:
+      linear-gradient(155deg, rgba(22, 193, 114, 0.15), transparent 54%),
+      var(--glass);
+    backdrop-filter: blur(24px) saturate(1.35);
+    -webkit-backdrop-filter: blur(24px) saturate(1.35);
+    box-shadow:
+      0 46px 90px -30px rgba(0, 0, 0, 0.92),
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      0 0 80px -34px rgba(22, 193, 114, 0.65);
+  }
+
+  /* specular sheen tracking the pointer */
+  .card-face::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      340px circle at var(--mx, 50%) var(--my, 0%),
+      rgba(255, 255, 255, 0.10),
+      transparent 62%
+    );
+    pointer-events: none;
+  }
+
+  .card-head {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.15rem;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .who { display: flex; flex-direction: column; gap: 0.3rem; }
+  .handle { font-size: 1.4rem; font-weight: 900; letter-spacing: -0.03em; }
+
+  .verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--brand-bright);
+    background: rgba(22, 193, 114, 0.10);
+    border: 1px solid rgba(22, 193, 114, 0.32);
+    border-radius: 999px;
+    padding: 0.32rem 0.62rem;
+    white-space: nowrap;
+  }
+
+  .card-rows { position: relative; display: flex; flex-direction: column; padding-top: 0.5rem; margin: 0; }
+
+  .row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-block: 0.66rem;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .row:last-child { border-bottom: 0; }
+
+  .row dt {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+
+  .row dd {
+    margin: 0;
+    font-weight: 700;
+    font-size: 1.45rem;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .row dd.small {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    color: var(--ink-soft);
+    font-family: var(--mono);
+  }
+
+  .card-foot {
+    position: relative;
+    margin-top: 1.1rem;
+    padding-top: 0.95rem;
+    border-top: 1px solid var(--line-soft);
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.05em;
+    color: var(--ink-faint);
+    line-height: 1.55;
+  }
+
+  .node {
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--brand);
+    box-shadow: 0 0 16px rgba(22, 193, 114, 0.85);
+    animation: breathe 4.2s ease-in-out infinite;
+  }
+
+  .node.hollow {
+    background: transparent;
+    border: 1.5px solid rgba(22, 193, 114, 0.75);
+    box-shadow: none;
+  }
+
+  .node.n1 { top: 6%;  left: -6%;   transform: translateZ(98px);  animation-delay: 0s; }
+  .node.n2 { top: 34%; left: -13%;  transform: translateZ(142px); animation-delay: .7s; }
+  .node.n3 { top: 78%; left: -3%;   transform: translateZ(74px);  animation-delay: 1.4s; }
+  .node.n4 { top: 12%; right: -9%;  transform: translateZ(122px); animation-delay: .35s; }
+  .node.n5 { top: 58%; right: -14%; transform: translateZ(170px); animation-delay: 1.05s; }
+  .node.n6 { top: 90%; right: -5%;  transform: translateZ(92px);  animation-delay: 1.75s; }
+
+  @keyframes breathe {
+    0%, 100% { opacity: 0.35; }
+    50%      { opacity: 1; }
+  }
+
+  /* ---------- passport, mirroring the app's Obsidian Glass profile ---------- */
+
+  .pp-top {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .pp-years {
+    font-family: var(--mono);
+    font-size: 0.5625rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    text-align: right;
+    line-height: 1.25;
+  }
+
+  .pp-years b {
+    display: block;
+    font-family: var(--sans);
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: var(--brand);
+    letter-spacing: -0.03em;
+  }
+
+  .pp-sky {
+    position: relative;
+    height: 172px;
+    margin: 0.4rem -0.3rem 0;
+    display: grid;
+    place-items: center;
+  }
+
+  .pp-sky svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .pp-sky line { stroke: rgba(22, 193, 114, 0.32); stroke-width: 1; }
+  .pp-sky circle.star { fill: #16c172; animation: twinkle 4s ease-in-out infinite; }
+
+  @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+  .pp-avatar {
+    position: relative;
+    z-index: 1;
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-weight: 900;
+    font-size: 1.65rem;
+    letter-spacing: -0.03em;
+    color: #06120c;
+    background: linear-gradient(150deg, #2ee08c, #12b46a);
+    box-shadow: 0 0 0 5px rgba(22, 193, 114, 0.12), 0 0 44px rgba(22, 193, 114, 0.55);
+  }
+
+  .pp-name {
+    text-align: center;
+    font-size: 1.65rem;
+    font-weight: 900;
+    letter-spacing: -0.035em;
+    margin-top: 0.85rem;
+  }
+
+  .pp-chips {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.7rem;
+  }
+
+  .chip {
+    font-size: 0.625rem;
+    font-family: var(--mono);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--line-soft);
+    border-radius: 999px;
+    padding: 0.3rem 0.64rem;
+  }
+
+  .chip.on {
+    color: var(--brand-bright);
+    border-color: rgba(22, 193, 114, 0.34);
+    background: rgba(22, 193, 114, 0.10);
+  }
+
+  .pp-label {
+    font-family: var(--mono);
+    font-size: 0.5625rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 1.3rem 0 0.65rem;
+  }
+
+  .pp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; }
+
+  .tile {
+    border: 1px solid var(--line-soft);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.72rem 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .tile b {
+    font-size: 1.5rem;
+    font-weight: 900;
+    letter-spacing: -0.035em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+
+  .tile b.sm {
+    font-size: 0.875rem;
+    font-family: var(--mono);
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.5;
+  }
+
+  .tile b.off { color: var(--ink-faint); }
+
+  .tile span {
+    font-size: 0.5625rem;
+    font-family: var(--mono);
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+</style>
+
+<div class="grain" aria-hidden="true"></div>
+<div class="rail" aria-hidden="true"><i id="rail"></i></div>
+
+<div class="stage">
+  <div class="field" aria-hidden="true">
+    <div class="horizon"></div>
+    <div class="field-plane" id="plane">
+      <svg viewBox="0 0 1050 680" preserveAspectRatio="none">
+        <rect class="turf" x="2" y="2" width="1046" height="676" rx="2"></rect>
+        <line class="turf" x1="525" y1="2" x2="525" y2="678"></line>
+        <circle class="turf" cx="525" cy="340" r="91.5"></circle>
+        <circle class="spot" cx="525" cy="340" r="4"></circle>
+
+        <rect class="turf" x="2" y="133.5" width="165" height="413"></rect>
+        <rect class="turf faint" x="2" y="249" width="55" height="182"></rect>
+        <circle class="spot" cx="110" cy="340" r="4"></circle>
+        <path class="turf faint" d="M167 267 A 91.5 91.5 0 0 1 167 413"></path>
+
+        <rect class="turf" x="883" y="133.5" width="165" height="413"></rect>
+        <rect class="turf faint" x="993" y="249" width="55" height="182"></rect>
+        <circle class="spot" cx="940" cy="340" r="4"></circle>
+        <path class="turf faint" d="M883 267 A 91.5 91.5 0 0 0 883 413"></path>
+
+        <path class="turf faint" d="M2 22 A 20 20 0 0 0 22 2"></path>
+        <path class="turf faint" d="M1028 2 A 20 20 0 0 0 1048 22"></path>
+        <path class="turf faint" d="M2 658 A 20 20 0 0 1 22 678"></path>
+        <path class="turf faint" d="M1048 658 A 20 20 0 0 0 1028 678"></path>
+      </svg>
+    </div>
+  </div>
+
+  <header class="masthead shell">
+    <div class="wordmark"><span class="pip"></span>Vamo</div>
+    <div class="locale">Benguerir &middot; 1337</div>
+  </header>
+
+  <section class="hero shell">
+    <div class="hero-copy" id="heroCopy">
+      <p class="eyebrow">Football, on the record</p>
+      <h1>
+        <span style="animation-delay:.05s">Your</span>
+        <span style="animation-delay:.13s">football</span>
+        <span style="animation-delay:.21s" class="lit">exists</span>
+        <span style="animation-delay:.29s">now.</span>
+      </h1>
+      <p class="lede">
+        Vamo builds every amateur player a football portfolio: the matches you
+        played, the teams you belong to, the tournaments you entered, and how
+        reliably you turn up. You do not type any of it in, so none of it can be
+        inflated.
+      </p>
+      <div class="hero-note">
+        <span>Nothing self-declared</span>
+        <span>Attendance proven by the server</span>
+      </div>
+      <div class="scroll-cue" id="cue"><i></i>Scroll</div>
+    </div>
+
+    <div class="card-stage">
+      <div class="card" id="card">
+        <span class="node n1" aria-hidden="true"></span>
+        <span class="node n2 hollow" aria-hidden="true"></span>
+        <span class="node n3" aria-hidden="true"></span>
+        <span class="node n4 hollow" aria-hidden="true"></span>
+        <span class="node n5" aria-hidden="true"></span>
+        <span class="node n6 hollow" aria-hidden="true"></span>
+
+        <article class="card-face" id="cardFace">
+          <div class="pp-top">
+            <p class="eyebrow">Player passport</p>
+            <span class="verified">42 Network</span>
+          </div>
+
+          <div class="pp-sky">
+            <svg viewBox="0 0 300 168" aria-hidden="true" preserveAspectRatio="none">
+              <line x1="150" y1="84" x2="42"  y2="30"></line>
+              <line x1="150" y1="84" x2="262" y2="42"></line>
+              <line x1="150" y1="84" x2="30"  y2="130"></line>
+              <line x1="150" y1="84" x2="256" y2="134"></line>
+              <line x1="150" y1="84" x2="150" y2="14"></line>
+              <circle class="star" cx="42"  cy="30"  r="4"></circle>
+              <circle class="star" cx="262" cy="42"  r="3.5" style="animation-delay:.6s"></circle>
+              <circle class="star" cx="30"  cy="130" r="3" style="animation-delay:1.2s"></circle>
+              <circle class="star" cx="256" cy="134" r="4" style="animation-delay:1.8s"></circle>
+              <circle class="star" cx="150" cy="14"  r="3" style="animation-delay:2.4s"></circle>
+            </svg>
+            <div class="pp-avatar">TK</div>
+          </div>
+
+          <h2 class="pp-name">tkoulal</h2>
+          <div class="pp-chips">
+            <span class="chip on">Verified 42</span>
+            <span class="chip">1337</span>
+          </div>
+
+          <p class="pp-label">Key stats</p>
+          <div class="pp-stats">
+            <div class="tile"><b data-count="6">0</b><span>Matches played</span></div>
+            <div class="tile"><b data-count="2">0</b><span>Players met</span></div>
+            <div class="tile"><b class="sm">GPS confirmed</b><span>Arrival</span></div>
+            <div class="tile"><b class="sm off">Not recorded</b><span>Rating</span></div>
+          </div>
+
+          <p class="card-foot">
+            Every field is generated from a match that happened. Where there is
+            no evidence, the passport stays empty.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+</div>
+
+<style>
+  .band { position: relative; z-index: 2; padding-block: clamp(4rem, 9vw, 7.5rem); }
+  .band + .band, .band + .pipeline { border-top: 1px solid var(--line-soft); }
+
+  .band-head {
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem;
+    margin-bottom: clamp(2.25rem, 5vw, 3.5rem);
+    max-width: var(--measure);
+  }
+
+  .band-head h2 { font-size: clamp(1.95rem, 1.3rem + 2.6vw, 3.2rem); }
+  .band-head p { color: var(--ink-muted); max-width: 54ch; }
+
+  /* reveal-on-scroll, applied to anything marked [data-rise] */
+  [data-rise] {
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+    transition-delay: var(--d, 0ms);
+  }
+  [data-rise].seen { opacity: 1; transform: none; }
+
+  /* ---------- pinned pipeline ---------- */
+
+  .pipeline { position: relative; z-index: 2; padding-block: clamp(3rem, 7vw, 5rem); }
+
+  .pipeline-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: clamp(2rem, 6vw, 5rem);
+    align-items: start;
+  }
+
+  .pin {
+    position: sticky;
+    top: clamp(4rem, 18vh, 9rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+
+  /* the rig: a small pitch that reacts to the active step */
+  .rig {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: 26px;
+    background:
+      linear-gradient(165deg, rgba(22, 193, 114, 0.08), transparent 60%),
+      var(--glass);
+    padding: 1.4rem;
+    overflow: hidden;
+  }
+
+  .rig-pitch {
+    position: relative;
+    aspect-ratio: 105 / 68;
+    display: grid;
+    place-items: center;
+  }
+
+  .rig-pitch svg { width: 100%; height: 100%; display: block; }
+
+  .bp {
+    fill: none;
+    stroke: rgba(22, 193, 114, 0.3);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .bp.faint { stroke: rgba(22, 193, 114, 0.15); }
+  .bp.dot { fill: rgba(22, 193, 114, 0.4); stroke: none; }
+
+  .player {
+    fill: transparent;
+    stroke: rgba(22, 193, 114, 0.45);
+    stroke-width: 2.5;
+    vector-effect: non-scaling-stroke;
+    transition: fill 0.5s var(--ease), stroke 0.5s var(--ease), opacity 0.5s var(--ease);
+  }
+
+  .player.on {
+    fill: #16c172;
+    stroke: #16c172;
+    filter: drop-shadow(0 0 6px rgba(22, 193, 114, 0.8));
+  }
+
+  /* geofence ring, only from step 2 */
+  .geo {
+    position: absolute;
+    width: 58%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 1px dashed rgba(22, 193, 114, 0.55);
+    opacity: 0;
+    transform: scale(0.75);
+    transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+  }
+
+  .pipeline[data-step="2"] .geo,
+  .pipeline[data-step="3"] .geo { opacity: 1; transform: scale(1); }
+  .pipeline[data-step="3"] .geo { border-style: solid; animation: ping 2.6s ease-out infinite; }
+
+  @keyframes ping {
+    0%   { box-shadow: 0 0 0 0 rgba(22, 193, 114, 0.35); }
+    70%  { box-shadow: 0 0 0 26px rgba(22, 193, 114, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(22, 193, 114, 0); }
+  }
+
+  /* the ledger line that gets written on step 3 */
+  .ledger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    border: 1px solid var(--line-soft);
+    background: rgba(255, 255, 255, 0.03);
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    opacity: 0.45;
+    transition: opacity 0.6s var(--ease), border-color 0.6s var(--ease),
+                color 0.6s var(--ease);
+  }
+
+  .pipeline[data-step="3"] .ledger {
+    opacity: 1;
+    border-color: rgba(22, 193, 114, 0.4);
+    color: var(--brand-bright);
+  }
+
+  .ledger b {
+    font-family: var(--sans);
+    font-size: 1.05rem;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .steps { display: flex; flex-direction: column; }
+
+  .step {
+    display: grid;
+    grid-template-columns: 3.25rem minmax(0, 1fr);
+    gap: clamp(1rem, 3vw, 1.9rem);
+    align-items: start;
+    padding-block: clamp(2.5rem, 12vh, 6rem);
+    border-top: 1px solid var(--line-soft);
+    opacity: 0.34;
+    transition: opacity 0.5s var(--ease);
+  }
+
+  .step:last-child { border-bottom: 1px solid var(--line-soft); }
+  .step.active { opacity: 1; }
+
+  .step-index {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    padding-top: 0.45rem;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.5s var(--ease);
+  }
+
+  .step.active .step-index { color: var(--brand); }
+
+  .step h3 { font-size: clamp(1.25rem, 1rem + 0.9vw, 1.7rem); margin-bottom: 0.6rem; }
+  .step p { color: var(--ink-muted); max-width: 46ch; }
+
+  @media (max-width: 900px) {
+    .pipeline-grid { grid-template-columns: minmax(0, 1fr); }
+    .pin { position: static; }
+    .step { padding-block: 2rem; opacity: 1; }
+    .step-index { color: var(--brand); }
+  }
+</style>
+
+<section class="pipeline shell" id="pipeline" data-step="0">
+  <div class="pipeline-grid">
+    <div class="pin">
+      <div class="band-head" style="margin-bottom:0">
+        <p class="eyebrow">How a passport fills</p>
+        <h2>Playing is the input.</h2>
+        <p>
+          Finding a game is the part you touch every week. It is not the
+          product, it is how the record gets written.
+        </p>
+      </div>
+
+      <div class="rig" aria-hidden="true">
+        <div class="rig-pitch">
+          <svg viewBox="0 0 1050 680" preserveAspectRatio="xMidYMid meet">
+            <rect class="bp" x="4" y="4" width="1042" height="672" rx="3"></rect>
+            <line class="bp" x1="525" y1="4" x2="525" y2="676"></line>
+            <circle class="bp" cx="525" cy="340" r="91.5"></circle>
+            <circle class="bp dot" cx="525" cy="340" r="5"></circle>
+            <rect class="bp faint" x="4" y="133.5" width="165" height="413"></rect>
+            <rect class="bp faint" x="881" y="133.5" width="165" height="413"></rect>
+            <rect class="bp faint" x="4" y="249" width="55" height="182"></rect>
+            <rect class="bp faint" x="991" y="249" width="55" height="182"></rect>
+
+            <!-- 7 v 7: keeper, two at the back, three across, one up top -->
+            <circle class="player" data-i="0"  cx="72"  cy="340" r="15"></circle>
+            <circle class="player" data-i="1"  cx="978" cy="340" r="15"></circle>
+            <circle class="player" data-i="2"  cx="205" cy="212" r="15"></circle>
+            <circle class="player" data-i="3"  cx="845" cy="468" r="15"></circle>
+            <circle class="player" data-i="4"  cx="205" cy="468" r="15"></circle>
+            <circle class="player" data-i="5"  cx="845" cy="212" r="15"></circle>
+            <circle class="player" data-i="6"  cx="362" cy="132" r="15"></circle>
+            <circle class="player" data-i="7"  cx="688" cy="548" r="15"></circle>
+            <circle class="player" data-i="8"  cx="362" cy="340" r="15"></circle>
+            <circle class="player" data-i="9"  cx="688" cy="340" r="15"></circle>
+            <circle class="player" data-i="10" cx="362" cy="548" r="15"></circle>
+            <circle class="player" data-i="11" cx="688" cy="132" r="15"></circle>
+            <circle class="player" data-i="12" cx="470" cy="258" r="15"></circle>
+            <circle class="player" data-i="13" cx="580" cy="422" r="15"></circle>
+          </svg>
+          <div class="geo"></div>
+        </div>
+        <div class="ledger">
+          <span>Matches played</span>
+          <b id="ledgerCount">5</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="steps">
+      <article class="step" data-step-i="1">
+        <span class="step-index">01</span>
+        <div>
+          <h3>Find a match near you</h3>
+          <p>
+            Games around you with the kickoff time, the price, the format, how
+            many seats are left, and the weather. No group chat, no asking
+            around to find out whether it is even on.
+          </p>
+        </div>
+      </article>
+
+      <article class="step" data-step-i="2">
+        <span class="step-index">02</span>
+        <div>
+          <h3>The host picks the squad</h3>
+          <p>
+            Joining files a request, and a request never eats a seat until the
+            host accepts it. When a confirmed player drops out, the waitlist
+            promotes the next one automatically.
+          </p>
+        </div>
+      </article>
+
+      <article class="step" data-step-i="3">
+        <span class="step-index">03</span>
+        <div>
+          <h3>Arriving writes the line</h3>
+          <p>
+            Turn up, and a geofence check on the server confirms it. That single
+            confirmed arrival is what moves your matches played, your players
+            met, and your reliability. Nothing else can move them.
+          </p>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<style>
+  .proof {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
+    gap: 1px;
+    background: var(--line-soft);
+    border: 1px solid var(--line-soft);
+    border-radius: 22px;
+    overflow: hidden;
+  }
+
+  .proof-cell {
+    position: relative;
+    background: var(--ground);
+    padding: 1.7rem 1.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    min-height: 178px;
+    transition: background 0.45s var(--ease);
+  }
+
+  .proof-cell::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.45s var(--ease);
+    background: radial-gradient(
+      260px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(22, 193, 114, 0.12),
+      transparent 60%
+    );
+    pointer-events: none;
+  }
+
+  .proof-cell:hover::after { opacity: 1; }
+
+  .proof-cell h3 { font-size: 1.08rem; font-weight: 700; letter-spacing: -0.022em; line-height: 1.3; }
+  .proof-cell p { color: var(--ink-muted); font-size: 0.9375rem; }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    color: var(--brand);
+  }
+
+  .proof-cell.negative { background: var(--panel); }
+  .proof-cell.negative .tag { color: var(--ink-faint); }
+  .proof-cell.negative::after { background: radial-gradient(260px circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,0.05), transparent 60%); }
+
+  .audience { display: grid; grid-template-columns: repeat(auto-fit, minmax(266px, 1fr)); gap: 1.25rem; }
+
+  .aud-card {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    padding: 1.8rem 1.65rem;
+    background: var(--glass);
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    transition: transform 0.5s var(--ease), border-color 0.5s var(--ease);
+  }
+
+  .aud-card:hover { transform: translateY(-6px); border-color: rgba(22, 193, 114, 0.4); }
+
+  .aud-card.lead {
+    background: linear-gradient(160deg, rgba(22, 193, 114, 0.14), transparent 62%), var(--glass-raised);
+    border-color: rgba(22, 193, 114, 0.34);
+  }
+
+  .aud-card h3 { font-size: 1.28rem; }
+  .aud-card p { color: var(--ink-muted); font-size: 0.9375rem; }
+
+  .role {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .aud-card.lead .role { color: var(--brand-bright); }
+
+  .status {
+    border: 1px solid var(--line);
+    border-radius: 26px;
+    background: var(--panel);
+    padding: clamp(1.75rem, 4vw, 2.9rem);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+    gap: clamp(1.75rem, 4vw, 3rem);
+  }
+
+  .status-col { display: flex; flex-direction: column; gap: 1rem; }
+
+  .status-col h3 {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.19em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--ink-faint);
+  }
+
+  .status-col.live h3 { color: var(--brand); }
+
+  .ticks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+
+  .ticks li {
+    display: grid;
+    grid-template-columns: 1.1rem minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: start;
+    color: var(--ink-soft);
+    font-size: 0.9375rem;
+  }
+
+  .ticks li::before {
+    content: "";
+    width: 9px;
+    height: 9px;
+    margin-top: 0.52rem;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.26);
+  }
+
+  .status-col.live .ticks li::before {
+    background: var(--brand);
+    border-color: var(--brand);
+    box-shadow: 0 0 12px rgba(22, 193, 114, 0.7);
+  }
+
+  .close { padding-block: clamp(4.5rem, 10vw, 8.5rem); }
+  .close h2 { font-size: clamp(2.1rem, 1.3rem + 3.6vw, 4rem); max-width: 19ch; margin-bottom: 1.3rem; }
+  .close p { color: var(--ink-muted); max-width: 52ch; margin-bottom: 2.1rem; }
+
+  .marks { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+  .mark {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.55rem 1rem;
+    transition: border-color 0.4s var(--ease), color 0.4s var(--ease);
+  }
+
+  .mark:hover { border-color: rgba(22, 193, 114, 0.5); color: var(--brand-bright); }
+
+  footer {
+    border-top: 1px solid var(--line-soft);
+    padding-block: 2rem 3rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 2rem;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  @media (max-width: 880px) {
+    .hero { grid-template-columns: minmax(0, 1fr); gap: 3.25rem; padding-top: 1.5rem; }
+    .hero-copy { max-width: none; }
+    .card-stage { order: 2; }
+    .field { inset: -4% -62% 0 -62%; }
+    .node.n2 { left: -7%; }
+    .node.n5 { right: -8%; }
+  }
+
+  .band, .gallery-band, .pipeline, .close { position: relative; }
+
+  .band::before, .gallery-band::before, .pipeline::before, .close::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+    width: min(760px, 80vw);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.5;
+  }
+
+  .gallery-band::before {
+    top: -12%; right: -18%;
+    background: radial-gradient(circle, rgba(22,193,114,0.13), transparent 68%);
+  }
+  .pipeline::before {
+    top: 18%; left: -22%;
+    background: radial-gradient(circle, rgba(22,193,114,0.10), transparent 68%);
+  }
+  .band::before {
+    bottom: -18%; right: -16%;
+    background: radial-gradient(circle, rgba(22,193,114,0.08), transparent 70%);
+  }
+  .close::before {
+    top: 6%; left: 8%;
+    background: radial-gradient(circle, rgba(22,193,114,0.14), transparent 66%);
+  }
+
+  /* underline that draws on hover, rather than a static one */
+  .mark { position: relative; overflow: hidden; }
+  .mark::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 1px;
+    background: var(--brand);
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    transition: transform 0.45s var(--ease);
+  }
+  .mark:hover::after { transform: scaleX(1); }
+
+  /* footer gets real structure */
+  footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1.5rem 2rem;
+    align-items: end;
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: var(--sans);
+    font-size: 0.875rem;
+    padding-block: 2.5rem 3.5rem;
+  }
+
+  .foot-brand { display: flex; flex-direction: column; gap: 0.6rem; }
+
+  .foot-mark {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 900;
+    font-size: 1.05rem;
+    letter-spacing: -0.04em;
+    color: var(--ink);
+  }
+
+  .foot-meta {
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    line-height: 1.9;
+  }
+
+  @media (max-width: 600px) {
+    footer { grid-template-columns: minmax(0, 1fr); }
+    .foot-meta { text-align: left; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .field-plane, .card, .node, .scroll-cue i, .geo, .stage::before { animation: none !important; }
+    .card, [data-rise], .aud-card, .seat, .step, .screen { transition: none !important; }
+    .device { transform: none !important; }
+    [data-rise] { opacity: 1; transform: none; }
+  }
+</style>
+
+<style>
+  .gallery-band { position: relative; z-index: 2; padding-block: clamp(4rem, 9vw, 7.5rem); border-top: 1px solid var(--line-soft); }
+
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: clamp(1rem, 2.4vw, 2rem);
+    align-items: start;
+  }
+
+  .device { display: flex; flex-direction: column; gap: 1rem; transform: translateY(var(--sp, 0px)); }
+
+  .screen {
+    position: relative;
+    border-radius: clamp(20px, 2.6vw, 30px);
+    padding: 7px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.16), rgba(255,255,255,0.03) 40%, rgba(0,0,0,0.4));
+    box-shadow:
+      0 40px 70px -34px rgba(0, 0, 0, 0.95),
+      0 0 60px -34px rgba(22, 193, 114, 0.5);
+    transition: transform 0.6s var(--ease);
+  }
+
+  .device:hover .screen { transform: translateY(-8px); }
+
+  .screen img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: clamp(15px, 2vw, 24px);
+    background: var(--ground);
+  }
+
+  .screen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+    pointer-events: none;
+  }
+
+  .device figcaption { display: flex; flex-direction: column; gap: 0.3rem; }
+
+  .device .cap-k {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    color: var(--brand);
+  }
+
+  .device .cap-t { font-size: 0.9375rem; color: var(--ink-muted); line-height: 1.5; }
+
+  @media (max-width: 900px) {
+    .gallery {
+      grid-template-columns: repeat(4, 72vw);
+      gap: 1rem;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding-bottom: 1rem;
+      margin-inline: calc(var(--gutter) * -1);
+      padding-inline: var(--gutter);
+    }
+    .device { scroll-snap-align: center; transform: none; }
+  }
+</style>
+
+<section class="gallery-band shell">
+  <div class="band-head" data-rise>
+    <p class="eyebrow">The product, not a mockup</p>
+    <h2>This already runs.</h2>
+    <p>
+      Four screens from the build as it stands. The passport is the point, the
+      rest is how it gets filled.
+    </p>
+  </div>
+
+  <div class="gallery" id="gallery">
+    <figure class="device" data-rise style="--d:0ms" data-par="0.10">
+      <div class="screen"><img src="assets/passport.webp" fetchpriority="high" alt="Vamo app screen" width="560" height="1196"></div>
+      <figcaption>
+        <span class="cap-k">Passport</span>
+        <span class="cap-t">A read-only card for any player, with matches you have shared.</span>
+      </figcaption>
+    </figure>
+
+    <figure class="device" data-rise style="--d:90ms" data-par="-0.06">
+      <div class="screen"><img src="assets/profile.webp" alt="Vamo app screen" width="560" height="1196"></div>
+      <figcaption>
+        <span class="cap-k">Your record</span>
+        <span class="cap-t">Played, hosted, met, and a football age counted from real matches.</span>
+      </figcaption>
+    </figure>
+
+    <figure class="device" data-rise style="--d:180ms" data-par="0.14">
+      <div class="screen"><img src="assets/home.webp" alt="Vamo app screen" width="560" height="1196"></div>
+      <figcaption>
+        <span class="cap-k">Next match</span>
+        <span class="cap-t">Your game tonight, who is in, and how long until kickoff.</span>
+      </figcaption>
+    </figure>
+
+    <figure class="device" data-rise style="--d:270ms" data-par="-0.04">
+      <div class="screen"><img src="assets/match.webp" alt="Vamo app screen" width="560" height="1196"></div>
+      <figcaption>
+        <span class="cap-k">Match detail</span>
+        <span class="cap-t">Squad, pitch, price, weather, and one action for your role.</span>
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="band shell">
+  <div class="band-head" data-rise>
+    <p class="eyebrow">What the record proves</p>
+    <h2>Presence, not opinions.</h2>
+    <p>
+      Most football apps ask you to rate yourself, then show the number to
+      strangers. Vamo holds the opposite line. The passport carries only what
+      the system watched happen, which is why it means something to someone who
+      has never met you.
+    </p>
+  </div>
+
+  <div class="proof" data-tilt-group>
+    <div class="proof-cell" data-rise style="--d:0ms">
+      <span class="tag">Recorded</span>
+      <h3>You were actually there</h3>
+      <p>Near kickoff the app checks your location against the pitch, on the server. Nobody checks in from home.</p>
+    </div>
+    <div class="proof-cell" data-rise style="--d:90ms">
+      <span class="tag">Recorded</span>
+      <h3>Who you played with</h3>
+      <p>Unique players met, counted once each, across every match your squad actually finished.</p>
+    </div>
+    <div class="proof-cell" data-rise style="--d:180ms">
+      <span class="tag">Recorded</span>
+      <h3>Teams and tournaments</h3>
+      <p>Squads you belong to, brackets you entered, results as the organiser entered them.</p>
+    </div>
+    <div class="proof-cell negative" data-rise style="--d:270ms">
+      <span class="tag">Never recorded</span>
+      <h3>Goals, assists, ratings</h3>
+      <p>No skill score exists anywhere in the system. Proving talent needs evidence we do not have, so we do not claim it.</p>
+    </div>
+  </div>
+</section>
+
+<section class="band shell">
+  <div class="band-head" data-rise>
+    <p class="eyebrow">Who this is for</p>
+    <h2>A record travels further than a phone number.</h2>
+  </div>
+
+  <div class="audience">
+    <div class="aud-card lead" data-rise style="--d:0ms">
+      <span class="role">Players</span>
+      <h3>Something to show</h3>
+      <p>Amateur football leaves no trace. Your history sits in a chat thread nobody outside your circle can see. The passport is the first thing you own about your own football.</p>
+    </div>
+    <div class="aud-card" data-rise style="--d:100ms">
+      <span class="role">Academies</span>
+      <h3>Attendance without paper</h3>
+      <p>Youth academies track who came to training in a notebook or a group chat. The same teams, attendance and tournament tools already fit them.</p>
+    </div>
+    <div class="aud-card" data-rise style="--d:200ms">
+      <span class="role">Clubs and organisers</span>
+      <h3>Players you can look up</h3>
+      <p>Run a tournament, and every registered player arrives with a record instead of a claim, then leaves with the result attached to it.</p>
+    </div>
+  </div>
+</section>
+
+<section class="band shell">
+  <div class="band-head" data-rise>
+    <p class="eyebrow">Where this actually is</p>
+    <h2>Built, not launched.</h2>
+    <p>A product about honest records should be honest about itself. This is the real state, today.</p>
+  </div>
+
+  <div class="status" data-rise>
+    <div class="status-col live">
+      <h3>Working now</h3>
+      <ul class="ticks">
+        <li>Discovery, hosting, host-approved joins, automatic waitlist</li>
+        <li>Server-side GPS arrival, per-match chat, persistent teams</li>
+        <li>Single-elimination tournaments with brackets and results</li>
+        <li>Sign in with 42, confirmed on a real device</li>
+      </ul>
+    </div>
+    <div class="status-col">
+      <h3>Not yet</h3>
+      <ul class="ticks">
+        <li>No public release on the App Store or Play Store</li>
+        <li>No paying venue, no revenue, no funding raised</li>
+        <li>Used by a handful of testers, not a community</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="close shell" data-rise>
+  <h2>The first record starts with one match.</h2>
+  <p>
+    Launching inside 1337 in Benguerir, where the first squads already play
+    together every week. Academies and pitch owners in Morocco are the next
+    conversation.
+  </p>
+  <div class="marks">
+    <span class="mark">Expo &amp; Supabase</span>
+    <span class="mark">PostGIS geofence</span>
+    <span class="mark">Row-level security</span>
+    <span class="mark">Made in Morocco</span>
+  </div>
+</section>
+
+<footer class="shell">
+  <div class="foot-brand">
+    <span class="foot-mark"><span class="pip"></span>Vamo</span>
+    <span style="color:var(--ink-muted);max-width:44ch">
+      A football portfolio built only from matches that actually happened.
+      Presence, teams and tournaments. Never talent.
+    </span>
+  </div>
+  <div class="foot-meta">
+    <div>Benguerir, Morocco</div>
+    <div>Pre-launch</div>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    var fine = window.matchMedia("(pointer: fine)");
+
+    var card = document.getElementById("card");
+    var face = document.getElementById("cardFace");
+    var heroCopy = document.getElementById("heroCopy");
+    var cue = document.getElementById("cue");
+    var plane = document.getElementById("plane");
+    var rail = document.getElementById("rail");
+    var devices = document.querySelectorAll("[data-par]");
+    var pipeline = document.getElementById("pipeline");
+    var ledger = document.getElementById("ledgerCount");
+
+    var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+
+    /* ---- scroll: progress rail, hero parallax, pitch tilt ---- */
+    var ticking = false;
+
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(function () {
+        ticking = false;
+        var y = window.scrollY || 0;
+        var doc = document.documentElement;
+        var max = doc.scrollHeight - window.innerHeight;
+        if (rail) rail.style.setProperty("--p", max > 0 ? (y / max).toFixed(4) : 0);
+
+        if (reduce.matches) return;
+
+        var vh = window.innerHeight || 1;
+        var p = clamp(y / (vh * 0.9), 0, 1);
+
+        if (heroCopy) {
+          heroCopy.style.setProperty("--lift", (p * 46).toFixed(1));
+          heroCopy.style.setProperty("--fade", (1 - p * 0.85).toFixed(3));
+        }
+        if (cue) cue.style.setProperty("--cue", (1 - p * 3).toFixed(3));
+        if (card) {
+          card.style.setProperty("--ty", (p * 54).toFixed(1) + "px");
+          card.style.setProperty("--sc", (1 - p * 0.14).toFixed(3));
+        }
+        if (plane) plane.style.setProperty("--tilt", (p * -7).toFixed(2) + "deg");
+
+        if (window.innerWidth > 900) {
+          for (var i = 0; i < devices.length; i++) {
+            var el = devices[i];
+            var r = el.getBoundingClientRect();
+            var mid = (r.top + r.height / 2 - vh / 2) / vh;
+            var rate = parseFloat(el.getAttribute("data-par")) || 0;
+            el.style.setProperty("--sp", (mid * rate * 190).toFixed(1) + "px");
+          }
+        }
+      });
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    /* ---- pointer: card tilt + specular sheen ---- */
+    function onMove(event) {
+      if (reduce.matches || !fine.matches) return;
+      window.requestAnimationFrame(function () {
+        if (card) {
+          var b = card.getBoundingClientRect();
+          var x = (event.clientX - b.left) / b.width - 0.5;
+          var yy = (event.clientY - b.top) / b.height - 0.5;
+          card.style.setProperty("--ry", (x * 8).toFixed(2) + "deg");
+          card.style.setProperty("--rx", (yy * -6).toFixed(2) + "deg");
+        }
+        if (face) {
+          var f = face.getBoundingClientRect();
+          face.style.setProperty("--mx", (((event.clientX - f.left) / f.width) * 100).toFixed(1) + "%");
+          face.style.setProperty("--my", (((event.clientY - f.top) / f.height) * 100).toFixed(1) + "%");
+        }
+      });
+    }
+
+    window.addEventListener("pointermove", onMove, { passive: true });
+
+    /* hover glow on grid cells follows the cursor */
+    document.querySelectorAll(".proof-cell").forEach(function (cell) {
+      cell.addEventListener("pointermove", function (e) {
+        var r = cell.getBoundingClientRect();
+        cell.style.setProperty("--mx", (((e.clientX - r.left) / r.width) * 100).toFixed(1) + "%");
+        cell.style.setProperty("--my", (((e.clientY - r.top) / r.height) * 100).toFixed(1) + "%");
+      }, { passive: true });
+    });
+
+    /* ---- reveals ---- */
+    var rise = document.querySelectorAll("[data-rise]");
+    if ("IntersectionObserver" in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) { en.target.classList.add("seen"); io.unobserve(en.target); }
+        });
+      }, { rootMargin: "0px 0px -12% 0px", threshold: 0.15 });
+      rise.forEach(function (el) { io.observe(el); });
+    } else {
+      rise.forEach(function (el) { el.classList.add("seen"); });
+    }
+
+    /* ---- counters on the passport ---- */
+    var counters = document.querySelectorAll("[data-count]");
+    function run(el) {
+      var target = parseInt(el.getAttribute("data-count"), 10) || 0;
+      if (reduce.matches) { el.textContent = target; return; }
+      var start = performance.now();
+      var dur = 900;
+      function tick(now) {
+        var t = clamp((now - start) / dur, 0, 1);
+        el.textContent = Math.round(target * (1 - Math.pow(1 - t, 3)));
+        if (t < 1) window.requestAnimationFrame(tick);
+      }
+      window.requestAnimationFrame(tick);
+    }
+    if ("IntersectionObserver" in window) {
+      var co = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) { run(en.target); co.unobserve(en.target); }
+        });
+      }, { threshold: 0.6 });
+      counters.forEach(function (el) { co.observe(el); });
+    } else {
+      counters.forEach(run);
+    }
+
+    /* ---- pinned pipeline: step drives the rig ---- */
+    var steps = document.querySelectorAll(".step");
+    var seatEls = document.querySelectorAll(".rig-pitch .player");
+    var fillFor = { 1: 5, 2: 11, 3: 14 };
+    var countFor = { 1: 5, 2: 5, 3: 6 };
+
+    function setStep(n) {
+      if (!pipeline || pipeline.getAttribute("data-step") === String(n)) return;
+      pipeline.setAttribute("data-step", String(n));
+      steps.forEach(function (s) {
+        s.classList.toggle("active", s.getAttribute("data-step-i") === String(n));
+      });
+      var fill = fillFor[n] || 0;
+      seatEls.forEach(function (s, i) { s.classList.toggle("on", i < fill); });
+      if (ledger) ledger.textContent = countFor[n];
+    }
+
+    // A thin IntersectionObserver band never re-fires for elements taller than
+    // itself, so the active step is computed straight from position instead:
+    // whichever step's midpoint sits closest to the middle of the viewport.
+    function syncStep() {
+      if (!steps.length) return;
+      var mid = window.innerHeight / 2;
+      var best = 1, bestDist = Infinity;
+      for (var i = 0; i < steps.length; i++) {
+        var r = steps[i].getBoundingClientRect();
+        var d = Math.abs(r.top + r.height / 2 - mid);
+        if (d < bestDist) { bestDist = d; best = parseInt(steps[i].getAttribute("data-step-i"), 10); }
+      }
+      setStep(best);
+    }
+
+    window.addEventListener("scroll", syncStep, { passive: true });
+    window.addEventListener("resize", syncStep);
+    syncStep();
+  })();
+</script>
+</body>
+</html>
